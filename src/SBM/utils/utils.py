@@ -12,7 +12,7 @@ import SBM.MonteCarlo.MCMC_PottsProf.MonteCarlo_PottsProf as mcp # type: ignore
 import numpy as np #type: ignore
 from Bio import SeqIO #type: ignore
 from tqdm import tqdm #type: ignore
-from scipy.spatial.distance import squareform #type: ignore
+from scipy.spatial.distance import squareform, pdist #type: ignore
 import csv as csv
 
 ##########################################################
@@ -220,7 +220,7 @@ def avg_over_runs(ws):
 ##########################################################
 ####################### COMPUTE STATISTICS #######################
 
-def CalcWeights(align,theta):
+def CalcWeights(align,theta,ignore_gaps=True):
 	"""
 	Function to compute the weights and effective count for a given alignment and threshold.
 
@@ -236,9 +236,13 @@ def CalcWeights(align,theta):
 	N_eff : float
 		The effective count derived from the sum of weights.
 	"""
-	#W = 1/np.max(1,(np.sum(squareform(pdist(align, 'hamming'))<theta,axis=0)))
-	counts = np.sum(squareform(compute_diversity(align))<theta,axis=0)
-	W = 1/(counts + (counts==0).astype('int'))
+	W = 0
+	if ignore_gaps:
+		counts = np.sum(squareform(compute_diversity(align))<theta,axis=0)
+		W = 1/(counts + (counts==0).astype('int'))
+	else: # consistent with MATLAB code, SCA code
+		W = np.sum(squareform(pdist(align, 'hamming'))<0.3,axis=0)
+		W = 1/np.array([max(1, x) for x in W])
 	N_eff=sum(W)
 	return W,N_eff
 

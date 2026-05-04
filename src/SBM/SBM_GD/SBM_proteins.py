@@ -23,6 +23,7 @@ def ParseOptions(options):
         ('N_chains', 1000),  #nb of states used to compute statistics
         ('m', 1), # Rank of the Hessian matrix (only for SBM)
         ('theta',0.2),
+        ('ignore_gaps_weighting', True), # ignore gaps when calculating sequence weights
         ('k_MCMC',10000),
 
         ('PseudoCount',False), # the default pseudo count is 1/Neff
@@ -133,7 +134,8 @@ def Init_statistics(options,train_align):
     ###### EVALUATE GOAL STATS #####
     print('Compute the statistics from the database....')
     if options['Weights'] is None:
-        W,N_eff=ut.CalcWeights(train_align,options['theta'])
+        W,N_eff=ut.CalcWeights(train_align,options['theta'],
+                               options['ignore_gaps_weighting'])
     else:
         assert len(options['Weights'])==train_align.shape[0]
         W = options['Weights']
@@ -162,10 +164,14 @@ def Init_Pruning(options, fij):
             # Création du masque
             Mask = np.ones(fij.size, dtype=int)
             Mask[flat_indices] = 0
-            Mask = Mask.reshape(fij.shape)
-            
-            options['Pruning Mask Couplings'] = Mask.astype('int')
-            print('Pruning pct: ', 1 - np.sum(Mask) / Mask.size)
+            Mask = Mask.reshape(fij.shape)  
+        else:
+            Mask = np.load(options['Pruning Mask Couplings'])
+
+        options['Pruning Mask Couplings'] = Mask.astype('int')
+        options['Pruning_perc'] = 1 - np.sum(Mask) / Mask.size
+        print('Pruning pct: ', 1 - np.sum(Mask) / Mask.size)
+
 
 def Init_Param(options,J0,h0,N_eff,fi):
 
@@ -258,8 +264,10 @@ def SBM(align,options,J0 = None,h0 = None):
     return output
 
 def GradLogLike(w,lambdaJ,lambdah,fi,fij,options,align_subsamp=None):
-    if options['Zero Couplings']: J,h=ut.Jw(w,options['q'],Couplings=False)
-    else: J,h=ut.Jw(w,options['q'])
+    if options['Zero Couplings']: 
+        J,h=ut.Jw(w,options['q'],Couplings=False)
+    else: 
+        J,h=ut.Jw(w,options['q'])
     
     ########## MODEL STATS #########
     if options['Zero Fields']:h*=0
@@ -276,7 +284,7 @@ def GradLogLike(w,lambdaJ,lambdah,fi,fij,options,align_subsamp=None):
         if options['Num_batch']==len(options['Batches'])-1:
             options['Num_batch']=0
         else:options['Num_batch'] = options['Num_batch'] + 1
-        W,N_eff=ut.CalcWeights(sub,options['theta'])
+        W,N_eff=ut.CalcWeights(sub,options['theta'],options['ignore_gaps_weighting'])
         fi,fij=ut.CalcStatsWeighted(options['q'],sub,W/N_eff)
     ################################
 
@@ -330,7 +338,7 @@ def Minimizer(fun,x0,options):
         
         ########## BM METHOD ###########
         else:
-            if options['Learning_rate'] is not None: t = options['Learning_rate'][i]
+            if options['Learning_rate'] is not None: t = options['Learning_rate']
             else:t = 1/((i+1)**options['alpha'])
             grad = fun(x)
             x -= t*grad
@@ -350,16 +358,17 @@ def Minimizer(fun,x0,options):
                     output['Trajectory']['w_'+str(idx)] = np.copy(x)
                 elif idx%options['Store Parameters']==0:
                     output['Trajectory']['w_'+str(idx)] = np.copy(x)
-                    
+        
         if i%100==0:
             if not options['Zero Couplings']:
                 J,h_field=ut.Jw(x,options['q'])
                 J_norm = np.mean(np.linalg.norm(J,'fro',axis = (2,3)))
                 output['J_norm'] = np.append(output['J_norm'],np.round(J_norm,3))
-            else:
-                J,h_field=ut.Jw(x,options['q'],Couplings=False)
-                h_norm = np.mean(np.sqrt(np.sum(h_field**2,axis = 1)))
-                output['h_norm'] = np.append(output['h_norm'],np.round(h_norm,3))
+        if options['Zero Couplings']:
+            J,h_field=ut.Jw(x,options['q'],Couplings=False)
+            J,h_field=ut.Zero_Sum_Gauge(J,h_field)
+            h_norm = np.mean(h_field[:,1]) #np.sqrt(np.sum(h_field**2,axis = 1)))
+            output['h_norm'] = np.append(output['h_norm'],h_norm)
     
     return x,output
 
