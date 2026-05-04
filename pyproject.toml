@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "SBM"
-version = "0.0.1"
+version = "0.0.2"
 description = "Stochastic Boltzmann Machine"
 authors = [{ name = "Marion" }]
 requires-python = ">=3.11"
