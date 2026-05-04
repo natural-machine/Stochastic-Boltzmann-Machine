@@ -15,23 +15,6 @@ virtualenv -p python3 env_SBM
 source env_SBM/bin/activate
 ```
 
-**Fix for Possible C++ Compiling Errors**
-It is likely that the C++ within this code is unable to compile with a version of python > 3.11, to fix this create a pyenv virtual enviorment with python 3.11.11 
-
-For macOS 
-```
-brew install pyenv
-pyenv install 3.11.11
-```
-
-Then create the virtualenv using pyenv: 
-```
-virtualenv -p ~/.pyenv/versions/3.11.11/bin/python3.11 env_SBM311
-source env_SBM311/bin/activate
-```
-Then download the python dependencies and build SBM as described below.  
-
-
 ### System requirements
 
 These requirements depend on your operating system.
@@ -83,12 +66,6 @@ import SBM.utils.utils as ut
 MSA = ut.load_fasta('fasta_file')
 np.save('data/MSA_array/MSA_fam.npy',MSA)
 ```
-
-You can also just run to add your MSA.fasta to data/fasta and create an np array in data/MSA_array
-```
-python scripts/MSA_to_np.py {path/to/your/fasta} {filename for output np array}
-```
-
 
 ## Training
 

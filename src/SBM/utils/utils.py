@@ -163,12 +163,6 @@ def Wj(J=None,h=None):
 	return W
 
 def Jw(W,q,Couplings=True):
-
-    q_original = q # I added this part
-    q = int(q)
-    if q_original != q:
-        print(f"WARNING: casting changed q from {q_original} to {q}")
-
     L=int(((q*q-2*q)+((2*q-q*q)**2+8*W.shape[0]*q*q)**(1/2))/2/q/q)
 
     if L>1 and Couplings:
